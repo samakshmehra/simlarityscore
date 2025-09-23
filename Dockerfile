@@ -10,9 +10,6 @@ COPY requirements.txt .
 # Install any needed packages specified in requirements.txt
 RUN pip install --no-cache-dir -r requirements.txt
 
-# Download NLTK data
-RUN python -c "import nltk; nltk.download('punkt_tab'); nltk.download('stopwords')"
-
 # Copy the current directory contents into the container at /app
 COPY . .
 
