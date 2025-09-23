@@ -1,5 +1,5 @@
-nltk==3.8.1
 pydantic==2.8.0
 fastapi==0.117.1
-sentence-transformers==5.1.1
 uvicorn==0.37.0
+torch==2.4.1
+transformers==4.44.2
