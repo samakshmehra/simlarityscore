@@ -18,29 +18,35 @@ def get_similarity_score(text1, text2):
         inputs = tokenizer(sentence, return_tensors="pt", truncation=True, max_length=512)
         with torch.no_grad():
             outputs = model(**inputs)
-        # [seq_len, hidden_dim]
-        token_embeddings = outputs.last_hidden_state.squeeze(0)
+        token_embeddings = outputs.last_hidden_state.squeeze(0)  # [seq_len, hidden_dim]
         return token_embeddings
 
     emb1 = get_token_embeddings(text1)
     emb2 = get_token_embeddings(text2)
 
     # Compute token-to-token similarity matrix
-    def compute_attention_matrix(emb1, emb2):
-        emb1_norm = F.normalize(emb1, dim=1)
-        emb2_norm = F.normalize(emb2, dim=1)
-        attention = torch.matmul(emb1_norm, emb2_norm.T)  # [len1, len2]
-        return attention
+    emb1_norm = F.normalize(emb1, dim=1)
+    emb2_norm = F.normalize(emb2, dim=1)
+    attention_matrix = torch.matmul(emb1_norm, emb2_norm.T)  # [len1, len2]
 
-    attention_matrix = compute_attention_matrix(emb1, emb2)
+    # Max similarity per token
+    max_scores_per_token = attention_matrix.max(dim=1)[0]  # [len1]
 
-    # Aggregate similarity scores: Max-pooling similarity
-    max_scores_per_token = attention_matrix.max(dim=1)[0]  # max per token in sentence1
-    similarity_maxpool = max_scores_per_token.mean().item()
+    # Softmax-weighted pooling
+    weights = F.softmax(max_scores_per_token, dim=0)      # importance weights
+    similarity_weighted = (max_scores_per_token * weights).sum()
+
+    # -----------------------------
+    # Sentence-level similarity
+    # -----------------------------
+    sent_emb1 = emb1.mean(dim=0)
+    sent_emb2 = emb2.mean(dim=0)
+    sent_score = F.cosine_similarity(sent_emb1, sent_emb2, dim=0)
+
+    # Combine token-level and sentence-level similarity
+    combined_score = (similarity_weighted + sent_score) / 2
 
     # Normalize to [0,1]
-    similarity_maxpool = (similarity_maxpool + 1) / 2
+    combined_score = ((combined_score + 1) / 2).item()
 
-    return similarity_maxpool
-
-
+    return combined_score
